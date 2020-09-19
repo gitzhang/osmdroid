@@ -8,15 +8,15 @@ import android.util.Log;
 import org.osmdroid.api.IMapView;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.IRegisterReceiver;
-import org.osmdroid.tileprovider.MapTile;
-import org.osmdroid.tileprovider.MapTileRequestState;
 import org.osmdroid.tileprovider.modules.IFilesystemCache;
 import org.osmdroid.tileprovider.modules.MapTileFileStorageProviderBase;
 import org.osmdroid.tileprovider.modules.MapTileModuleProviderBase;
 import org.osmdroid.tileprovider.tilesource.ITileSource;
+import org.osmdroid.util.MapTileIndex;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 /**
  * Adapted from code from here: https://github.com/MKergall/osmbonuspack, which is LGPL
@@ -57,7 +57,7 @@ public class MapsForgeTileModuleProvider extends MapTileFileStorageProviderBase 
     }
 
     @Override
-    protected Runnable getTileLoader() {
+    public TileLoader getTileLoader() {
         return new TileLoader();
     }
 
@@ -87,27 +87,45 @@ public class MapsForgeTileModuleProvider extends MapTileFileStorageProviderBase 
     private class TileLoader extends MapTileModuleProviderBase.TileLoader {
 
         @Override
-        public Drawable loadTile(final MapTileRequestState pState) {
-            //TODO find a more efficient want to do this, seems overlay complicated
-            MapTile mapTile = pState.getMapTile();
+        public Drawable loadTile(final long pMapTileIndex) {
+            //TODO find a more efficient want to do this, seems overly complicated
             String dbgPrefix = null;
             if (Configuration.getInstance().isDebugTileProviders()) {
-                dbgPrefix = "MapsForgeTileModuleProvider.TileLoader.loadTile(" + mapTile + "): ";
+                dbgPrefix = "MapsForgeTileModuleProvider.TileLoader.loadTile(" + MapTileIndex.toString(pMapTileIndex) + "): ";
                 Log.d(IMapView.LOGTAG,dbgPrefix + "tileSource.renderTile");
             }
-            Drawable image= tileSource.renderTile(mapTile);
+            Drawable image= tileSource.renderTile(pMapTileIndex);
             if (image!=null && image instanceof BitmapDrawable) {
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
                 ((BitmapDrawable)image).getBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream);
                 byte[] bitmapdata = stream.toByteArray();
+                try {
+                    stream.close();
+                } catch (IOException e) {
+                    //NO OP
+                }
 
                 if (Configuration.getInstance().isDebugTileProviders()) {
                     Log.d(IMapView.LOGTAG, dbgPrefix +
                             "save tile " + bitmapdata.length +
-                            " bytes to " + tileSource.getTileRelativeFilenameString(mapTile));
+                            " bytes to " + tileSource.getTileRelativeFilenameString(pMapTileIndex));
                 }
 
-                tilewriter.saveFile(tileSource, mapTile, new ByteArrayInputStream(bitmapdata));
+                ByteArrayInputStream bais = null;
+                try {
+                    bais = new ByteArrayInputStream(bitmapdata);
+                    tilewriter.saveFile(tileSource, pMapTileIndex, bais, null);
+                } catch (Exception ex) {
+                    Log.w(IMapView.LOGTAG,"forge error storing tile cache",ex);
+                } finally {
+                    if (bais!=null)
+                        try{
+                            bais.close();
+                        }catch (IOException e) {
+                            //NO OP
+                        }
+                }
+
             }
             return image;
         }

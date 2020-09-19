@@ -1,5 +1,6 @@
 package org.osmdroid.tileprovider.modules;
 
+import android.graphics.drawable.Drawable;
 import android.util.Log;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -15,11 +16,12 @@ import java.util.NoSuchElementException;
 import org.osmdroid.api.IMapView;
 
 import org.osmdroid.config.Configuration;
-import org.osmdroid.tileprovider.MapTile;
+import org.osmdroid.tileprovider.ExpirableBitmapDrawable;
 import org.osmdroid.tileprovider.constants.OpenStreetMapTileProviderConstants;
 import org.osmdroid.tileprovider.tilesource.ITileSource;
 import org.osmdroid.tileprovider.util.Counters;
 import org.osmdroid.tileprovider.util.StreamUtils;
+import org.osmdroid.util.MapTileIndex;
 
 /**
  * An implementation of {@link IFilesystemCache}. It writes tiles to the file system cache. If the
@@ -44,6 +46,7 @@ public class TileWriter implements IFilesystemCache {
 	private static long mUsedCacheSpace;
 	static boolean hasInited=false;
 	Thread initThread=null;
+	private long mMaximumCachedFileAge;
 
 	// ===========================================================
 	// Constructors
@@ -69,6 +72,7 @@ public class TileWriter implements IFilesystemCache {
 					}
 				}
 			};
+			initThread.setName("TileWriter#init");
 			initThread.setPriority(Thread.MIN_PRIORITY);
 			initThread.start();
 		}
@@ -88,16 +92,19 @@ public class TileWriter implements IFilesystemCache {
 		return mUsedCacheSpace;
 	}
 
+	public void setMaximumCachedFileAge(long mMaximumCachedFileAge) {
+		this.mMaximumCachedFileAge = mMaximumCachedFileAge;
+	}
+
 	// ===========================================================
 	// Methods from SuperClass/Interfaces
 	// ===========================================================
 
 	@Override
-	public boolean saveFile(final ITileSource pTileSource, final MapTile pTile,
-			final InputStream pStream) {
+	public boolean saveFile(final ITileSource pTileSource, final long pMapTileIndex,
+			final InputStream pStream, final Long pExpirationTime) {
 
-		final File file = new File(Configuration.getInstance().getOsmdroidTileCache(), pTileSource.getTileRelativeFilenameString(pTile)
-				+ OpenStreetMapTileProviderConstants.TILE_PATH_EXTENSION);
+		final File file = getFile(pTileSource, pMapTileIndex);
 
 		if (Configuration.getInstance().isDebugTileProviders()){
 			Log.d(IMapView.LOGTAG, "TileWrite " + file.getAbsolutePath());
@@ -139,25 +146,32 @@ public class TileWriter implements IFilesystemCache {
 	}
 
 	@Override
-	public boolean remove(final ITileSource pTileSource, final MapTile pTile) {
-		final File file = new File(Configuration.getInstance().getOsmdroidTileCache(), pTileSource.getTileRelativeFilenameString(pTile)
-				+ OpenStreetMapTileProviderConstants.TILE_PATH_EXTENSION);
+	public boolean remove(final ITileSource pTileSource, final long pMapTileIndex) {
+		final File file = getFile(pTileSource, pMapTileIndex);
+
 		if (file.exists()) {
 			try {
-				file.delete();
-				return true;
+				return file.delete();
 			}catch (Exception ex){
 				//potential io exception
-				Log.i(IMapView.LOGTAG, "Unable to delete cached tile from " + pTileSource.name() + " " + pTile.toString() , ex);
+				Log.i(IMapView.LOGTAG, "Unable to delete cached tile from " + pTileSource.name() + " " + MapTileIndex.toString(pMapTileIndex) , ex);
 			}
 		}
 		return false;
 	}
 
+	/**
+	 *
+	 * @since 5.6.5
+	 */
+	public File getFile(final ITileSource pTileSource, final long pMapTileIndex) {
+		return new File(Configuration.getInstance().getOsmdroidTileCache(), pTileSource.getTileRelativeFilenameString(pMapTileIndex)
+				+ OpenStreetMapTileProviderConstants.TILE_PATH_EXTENSION);
+	}
+
 	@Override
-	public boolean exists(final ITileSource pTileSource, final MapTile pTile) {
-		return new File(Configuration.getInstance().getOsmdroidTileCache(), pTileSource.getTileRelativeFilenameString(pTile)
-				+ OpenStreetMapTileProviderConstants.TILE_PATH_EXTENSION).exists();
+	public boolean exists(final ITileSource pTileSource, final long pMapTileIndex) {
+		return getFile(pTileSource, pMapTileIndex).exists();
 	}
 
 	// ===========================================================
@@ -252,7 +266,7 @@ public class TileWriter implements IFilesystemCache {
 	 */
 	private void cutCurrentCache() {
 
-          final File lock=Configuration.getInstance().getOsmdroidTileCache();
+		final File lock=Configuration.getInstance().getOsmdroidTileCache();
 		synchronized (lock) {
 
 			if (mUsedCacheSpace > Configuration.getInstance().getTileFileSystemCacheTrimBytes()) {
@@ -290,4 +304,34 @@ public class TileWriter implements IFilesystemCache {
 		}
 	}
 
+	@Override
+	public Long getExpirationTimestamp(final ITileSource pTileSource, final long pMapTileIndex) {
+		return null;
+	}
+
+	@Override
+	public Drawable loadTile(final ITileSource pTileSource, final long pMapTileIndex) throws Exception{
+		// Check the tile source to see if its file is available and if so, then render the
+		// drawable and return the tile
+		final File file = getFile(pTileSource, pMapTileIndex);
+		if (!file.exists()) {
+			return null;
+		}
+
+		final Drawable drawable = pTileSource.getDrawable(file.getPath());
+
+		// Check to see if file has expired
+		final long now = System.currentTimeMillis();
+		final long lastModified = file.lastModified();
+		final boolean fileExpired = lastModified < now - mMaximumCachedFileAge;
+
+		if (fileExpired && drawable != null) {
+			if (Configuration.getInstance().isDebugMode()) {
+				Log.d(IMapView.LOGTAG,"Tile expired: " + MapTileIndex.toString(pMapTileIndex));
+			}
+			ExpirableBitmapDrawable.setState(drawable, ExpirableBitmapDrawable.EXPIRED);
+		}
+
+		return drawable;
+	}
 }

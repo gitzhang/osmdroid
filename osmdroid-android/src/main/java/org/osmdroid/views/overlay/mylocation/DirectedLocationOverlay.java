@@ -57,14 +57,9 @@ public class DirectedLocationOverlay extends Overlay {
 	public DirectedLocationOverlay(final Context ctx) {
 		super();
 
-		BitmapDrawable d=(BitmapDrawable)ctx.getResources().getDrawable(R.drawable.direction_arrow);
+		final BitmapDrawable d=(BitmapDrawable)ctx.getResources().getDrawable(R.drawable.twotone_navigation_black_48);
 
 		setDirectionArrow(d.getBitmap());
-
-		this.DIRECTION_ARROW_CENTER_X = this.DIRECTION_ARROW.getWidth() / 2 - 0.5f;
-		this.DIRECTION_ARROW_CENTER_Y = this.DIRECTION_ARROW.getHeight() / 2 - 0.5f;
-		this.DIRECTION_ARROW_HEIGHT = this.DIRECTION_ARROW.getHeight();
-		this.DIRECTION_ARROW_WIDTH = this.DIRECTION_ARROW.getWidth();
 
 		this.mAccuracyPaint.setStrokeWidth(2);
 		this.mAccuracyPaint.setColor(Color.BLUE);
@@ -81,8 +76,8 @@ public class DirectedLocationOverlay extends Overlay {
      */
 	public void setDirectionArrow(final Bitmap image){
 		this.DIRECTION_ARROW = image;
-		this.DIRECTION_ARROW_CENTER_X = this.DIRECTION_ARROW.getWidth() / 2 - 0.5f;
-		this.DIRECTION_ARROW_CENTER_Y = this.DIRECTION_ARROW.getHeight() / 2 - 0.5f;
+		this.DIRECTION_ARROW_CENTER_X = this.DIRECTION_ARROW.getWidth() / 2f - 0.5f;
+		this.DIRECTION_ARROW_CENTER_Y = this.DIRECTION_ARROW.getHeight() / 2f - 0.5f;
 		this.DIRECTION_ARROW_HEIGHT = this.DIRECTION_ARROW.getHeight();
 		this.DIRECTION_ARROW_WIDTH = this.DIRECTION_ARROW.getWidth();
 	}
@@ -122,14 +117,8 @@ public class DirectedLocationOverlay extends Overlay {
 	}
 
 	@Override
-	public void draw(final Canvas c, final MapView osmv, final boolean shadow) {
-
-		if (shadow) {
-			return;
-		}
-
+	public void draw(final Canvas c, final Projection pj) {
 		if (this.mLocation != null) {
-			final Projection pj = osmv.getProjection();
 			pj.toPixels(this.mLocation, screenCoords);
 
 			if (this.mShowAccuracy && this.mAccuracy > 10) {

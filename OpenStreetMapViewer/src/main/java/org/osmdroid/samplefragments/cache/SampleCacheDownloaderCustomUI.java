@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -18,6 +19,7 @@ import android.widget.Toast;
 import org.osmdroid.R;
 import org.osmdroid.samplefragments.BaseSampleFragment;
 import org.osmdroid.tileprovider.cachemanager.CacheManager;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.BoundingBox;
 import org.osmdroid.views.MapView;
 
@@ -39,14 +41,23 @@ public class SampleCacheDownloaderCustomUI extends BaseSampleFragment implements
     TextView cache_estimate;
     CacheManager mgr;
     AlertDialog downloadPrompt = null;
+    CacheManager.CacheManagerTask downloadingTask=null;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
         View root = inflater.inflate(R.layout.sample_cachemgr, container, false);
 
-        mMapView = (MapView) root.findViewById(R.id.mapview);
-        btnCache = (Button) root.findViewById(R.id.btnCache);
+        //prevent the action bar/toolbar menu in order to prevent tile source changes.
+        //if this is enabled, playstore users could actually download large volumes of tiles
+        //from tile sources that do not allow it., causing our app to get banned, which would be
+        //bad
+        setHasOptionsMenu(false);
+
+        mMapView = new MapView(getActivity());
+        mMapView.setTileSource(TileSourceFactory.USGS_SAT);
+        ((LinearLayout) root.findViewById(R.id.mapview)).addView(mMapView);
+        btnCache = root.findViewById(R.id.btnCache);
         btnCache.setOnClickListener(this);
         mgr = new CacheManager(mMapView);
         return root;
@@ -86,7 +97,9 @@ public class SampleCacheDownloaderCustomUI extends BaseSampleFragment implements
         alertDialogBuilder.setItems(new CharSequence[]{
                         getResources().getString(R.string.cache_current_size),
                         getResources().getString(R.string.cache_download),
-                        getResources().getString(R.string.cancel)
+                        getResources().getString(R.string.cancelall),
+                        getResources().getString(R.string.showpendingjobs),
+                        getResources().getString(R.string.close)
                 }, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         switch (which) {
@@ -95,10 +108,16 @@ public class SampleCacheDownloaderCustomUI extends BaseSampleFragment implements
                                 break;
                             case 1:
                                 downloadJobAlert();
-                            default:
-                                dialog.dismiss();
+                                break;
+                            case 2:
+                                mgr.cancelAllJobs();
+                                Toast.makeText(getActivity(), "Jobs Canceled", Toast.LENGTH_LONG).show();
+                                break;
+                            case 3:
+                                Toast.makeText(getActivity(), "Pending Jobs: " + mgr.getPendingJobs(), Toast.LENGTH_LONG).show();
                                 break;
                         }
+                        dialog.dismiss();
                     }
                 }
         );
@@ -122,31 +141,31 @@ public class SampleCacheDownloaderCustomUI extends BaseSampleFragment implements
         View view = View.inflate(getActivity(), R.layout.sample_cachemgr_input, null);
 
         BoundingBox boundingBox = mMapView.getBoundingBox();
-        zoom_max = (SeekBar) view.findViewById(R.id.slider_zoom_max);
-        zoom_max.setMax(mMapView.getMaxZoomLevel());
+        zoom_max = view.findViewById(R.id.slider_zoom_max);
+        zoom_max.setMax((int) mMapView.getMaxZoomLevel());
         zoom_max.setOnSeekBarChangeListener(SampleCacheDownloaderCustomUI.this);
 
 
-        zoom_min = (SeekBar) view.findViewById(R.id.slider_zoom_min);
-        zoom_min.setMax(mMapView.getMaxZoomLevel());
-        zoom_min.setProgress(mMapView.getMinZoomLevel());
+        zoom_min = view.findViewById(R.id.slider_zoom_min);
+        zoom_min.setMax((int) mMapView.getMaxZoomLevel());
+        zoom_min.setProgress((int) mMapView.getMinZoomLevel());
         zoom_min.setOnSeekBarChangeListener(SampleCacheDownloaderCustomUI.this);
-        cache_east = (EditText) view.findViewById(R.id.cache_east);
+        cache_east = view.findViewById(R.id.cache_east);
         cache_east.setText(boundingBox.getLonEast() + "");
-        cache_north = (EditText) view.findViewById(R.id.cache_north);
+        cache_north = view.findViewById(R.id.cache_north);
         cache_north.setText(boundingBox.getLatNorth()  + "");
-        cache_south = (EditText) view.findViewById(R.id.cache_south);
+        cache_south = view.findViewById(R.id.cache_south);
         cache_south.setText(boundingBox.getLatSouth()  + "");
-        cache_west = (EditText) view.findViewById(R.id.cache_west);
+        cache_west = view.findViewById(R.id.cache_west);
         cache_west.setText(boundingBox.getLonWest()  + "");
-        cache_estimate = (TextView) view.findViewById(R.id.cache_estimate);
+        cache_estimate = view.findViewById(R.id.cache_estimate);
 
         //change listeners for both validation and to trigger the download estimation
-        cache_east.addTextChangedListener((TextWatcher) this);
-        cache_north.addTextChangedListener((TextWatcher) this);
-        cache_south.addTextChangedListener((TextWatcher) this);
-        cache_west.addTextChangedListener((TextWatcher) this);
-        executeJob = (Button) view.findViewById(R.id.executeJob);
+        cache_east.addTextChangedListener(this);
+        cache_north.addTextChangedListener(this);
+        cache_south.addTextChangedListener(this);
+        cache_west.addTextChangedListener(this);
+        executeJob = view.findViewById(R.id.executeJob);
         executeJob.setOnClickListener(this);
         builder.setView(view);
         builder.setCancelable(true);
@@ -205,9 +224,17 @@ public class SampleCacheDownloaderCustomUI extends BaseSampleFragment implements
                     progressBar.setMessage("Downloading ...");
                     progressBar.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
                     progressBar.setProgress(0);
-
+                    progressBar.setCancelable(true);
+                    progressBar.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                        @Override
+                        public void onDismiss(DialogInterface dialog) {
+                            //cancel the job wit the dialog is closed
+                            downloadingTask.cancel(true);
+                            System.out.println("Pending jobs " + mgr.getPendingJobs());
+                        }
+                    });
                     //this triggers the download
-                    mgr.downloadAreaAsyncNoUI(getActivity(), bb, zoommin, zoommax, SampleCacheDownloaderCustomUI.this);
+                    downloadingTask = mgr.downloadAreaAsyncNoUI(getActivity(), bb, zoommin, zoommax, SampleCacheDownloaderCustomUI.this);
 
 
                 }

@@ -1,9 +1,10 @@
 package org.osmdroid.samplefragments.tilesources;
 
-import org.osmdroid.tileprovider.MapTile;
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase;
+import org.osmdroid.util.MapTileIndex;
 
 /**
+ * sample custom tile source
  * Created by alex on 6/20/16.
  */
 public class USGSTileSource extends OnlineTileSourceBase {
@@ -23,12 +24,12 @@ public class USGSTileSource extends OnlineTileSourceBase {
      * @param aBaseUrl             the base url(s) of the tile server used when constructing the url to download the tiles
      */
     public USGSTileSource(String aName, int aZoomMinLevel, int aZoomMaxLevel, int aTileSizePixels, String aImageFilenameEnding, String[] aBaseUrl) {
-        super(aName, aZoomMinLevel, aZoomMaxLevel, aTileSizePixels, aImageFilenameEnding, aBaseUrl);
+        super(aName, aZoomMinLevel, aZoomMaxLevel, aTileSizePixels, aImageFilenameEnding, aBaseUrl,"USGS");
     }
 
     @Override
-    public String getTileURLString(MapTile aTile) {
-        return getBaseUrl() + aTile.getZoomLevel() + "/" + aTile.getY() + "/" + aTile.getX()
+    public String getTileURLString(final long pMapTileIndex) {
+        return getBaseUrl() + MapTileIndex.getZoom(pMapTileIndex) + "/" + MapTileIndex.getY(pMapTileIndex) + "/" + MapTileIndex.getX(pMapTileIndex)
                 + mImageFilenameEnding;
     }
 }

@@ -9,7 +9,6 @@
 
 package org.osmdroid.test;
 
-import android.os.Build;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.test.ActivityInstrumentationTestCase2;
@@ -19,14 +18,13 @@ import junit.framework.Assert;
 
 import org.osmdroid.ExtraSamplesActivity;
 import org.osmdroid.ISampleFactory;
-import org.osmdroid.MainActivity;
 import org.osmdroid.OsmApplication;
 import org.osmdroid.bugtestfragments.BugFactory;
 import org.osmdroid.samplefragments.*;
+import org.osmdroid.samplefragments.ui.SamplesMenuFragment;
 import org.osmdroid.tileprovider.util.Counters;
 
 import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class ExtraSamplesTest extends ActivityInstrumentationTestCase2<ExtraSamplesActivity> {
 
@@ -62,8 +60,8 @@ public class ExtraSamplesTest extends ActivityInstrumentationTestCase2<ExtraSamp
         Fragment frag = (fm.findFragmentByTag(ExtraSamplesActivity.SAMPLES_FRAGMENT_TAG));
         assertNotNull(frag);
 
-        assertTrue(frag instanceof FragmentSamples);
-        //FragmentSamples samples = (FragmentSamples) frag;
+        assertTrue(frag instanceof SamplesMenuFragment);
+        //SamplesMenuFragment samples = (SamplesMenuFragment) frag;
 
 
         int[] fireOrder = new int[sampleFactory.count()];
@@ -72,16 +70,20 @@ public class ExtraSamplesTest extends ActivityInstrumentationTestCase2<ExtraSamp
         }
         shuffleArray(fireOrder);
 
-        Log.i(FragmentSamples.TAG, "Memory allocation: INIT Free: " + Runtime.getRuntime().freeMemory() + " Total:" + Runtime.getRuntime().totalMemory() + " Max:" + Runtime.getRuntime().maxMemory());
+        Log.i(SamplesMenuFragment.TAG, "Memory allocation: INIT Free: " + Runtime.getRuntime().freeMemory() + " Total:" + Runtime.getRuntime().totalMemory() + " Max:" + Runtime.getRuntime().maxMemory());
         for (int i = 0; i < fireOrder.length; i++) {
+            // lousy attempt to decrease the time taken by travis
+            if (i > 60) {
+                break;
+            }
 
 
-            for (int k = 0; k < 5; k++) {
-                Log.i(FragmentSamples.TAG, k + "Memory allocation: Before load: Free: " + Runtime.getRuntime().freeMemory() + " Total:" + Runtime.getRuntime().totalMemory() + " Max:" + Runtime.getRuntime().maxMemory());
+            for (int k = 0; k < 1; k++) {
+                Log.i(SamplesMenuFragment.TAG, k + "Memory allocation: Before load: Free: " + Runtime.getRuntime().freeMemory() + " Total:" + Runtime.getRuntime().totalMemory() + " Max:" + Runtime.getRuntime().maxMemory());
                 final BaseSampleFragment basefrag = sampleFactory.getSample(fireOrder[i]);
                 if (basefrag.skipOnCiTests())
                     break;
-                Log.i(FragmentSamples.TAG, "loading fragment ("+i+"/" + sampleFactory.count()+") run " +k +" " + basefrag.getSampleTitle() + ", " + frag.getClass().getCanonicalName());
+                Log.i(SamplesMenuFragment.TAG, "loading fragment ("+i+"/" + sampleFactory.count()+") run " +k +" " + basefrag.getSampleTitle() + ", " + frag.getClass().getCanonicalName());
 
                 Counters.printToLogcat();
                 if (Counters.countOOM > 0 || Counters.fileCacheOOM > 0) {
@@ -132,7 +134,7 @@ public class ExtraSamplesTest extends ActivityInstrumentationTestCase2<ExtraSamp
 
 
                 System.gc();
-                Log.i(FragmentSamples.TAG, "Memory allocation: END Free: " + Runtime.getRuntime().freeMemory() + " Total:" + Runtime.getRuntime().totalMemory() + " Max:" + Runtime.getRuntime().maxMemory());
+                Log.i(SamplesMenuFragment.TAG, "Memory allocation: END Free: " + Runtime.getRuntime().freeMemory() + " Total:" + Runtime.getRuntime().totalMemory() + " Max:" + Runtime.getRuntime().maxMemory());
             }
         }
     }

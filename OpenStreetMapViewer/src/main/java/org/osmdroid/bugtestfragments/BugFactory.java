@@ -28,7 +28,11 @@ public final class BugFactory implements ISampleFactory {
                 Bug382Crash.class,
                 Bug164EndlessOnScolls.class,
                 Bug419Zoom.class,
-                Bug445Caching.class
+                Bug445Caching.class,
+                Bug512Marker.class,
+                Bug512CacheManagerWp.class,
+            Bug846InfiniteRedrawLoop.class,
+            Bug1322.class,Issue1444.class
         };
     }
 

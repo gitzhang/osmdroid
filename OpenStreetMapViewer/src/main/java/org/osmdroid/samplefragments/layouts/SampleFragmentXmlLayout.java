@@ -2,7 +2,6 @@ package org.osmdroid.samplefragments.layouts;
 
 
 import org.osmdroid.samplefragments.BaseSampleFragment;
-import org.osmdroid.views.MapView;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -30,12 +29,8 @@ public class SampleFragmentXmlLayout extends BaseSampleFragment {
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 		View v = inflater.inflate(org.osmdroid.R.layout.activity_starter_mapview, null);
-		mMapView = (MapView) v.findViewById(org.osmdroid.R.id.mapview);
+		mMapView = v.findViewById(org.osmdroid.R.id.mapview);
 		return v;
-		// mResourceProxy = new ResourceProxyImpl(inflater.getContext().getApplicationContext());
-		// mMapView = new MapView(inflater.getContext(), 256, mResourceProxy);
-		// mMapView.setUseSafeCanvas(true);
-		// return mMapView;
 	}
 
 }

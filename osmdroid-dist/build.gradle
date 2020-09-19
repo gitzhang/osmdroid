@@ -11,26 +11,26 @@ distributions {
             from('../OpenStreetMapViewer/build/outputs/apk') {
                 exclude '**/*unaligned*.apk'
             }
-            from('../osmdroid-forge-app/build/outputs/apk') {
-                exclude '**/*unaligned*.apk'
-            }
             from('../osmdroid-mapsforge/build/outputs/aar') {
-                exclude '**/osmdroid-mapsforge-release.aar'
             }
-            from('../osmdroid-mapsforge/build/libs/')   //javadoc and sources
-
+            from('../osmdroid-mapsforge/build/libs/')   {}//javadoc and sources
+			from('../osmdroid-geopackage/build/outputs/aar') {
+            }
+            from('../osmdroid-geopackage/build/libs') { //javadoc and sources
+            }
             from('../osmdroid-third-party/build/outputs/aar') {
-                exclude '**/osmdroid-third-party-release.aar'
             }
             from('../osmdroid-third-party/build/libs/')   //javadoc and sources
 
             from('../osmdroid-android/build/outputs/aar') {
-                exclude '**/osmdroid-android-release.aar'
             }
-            from('../osmdroid-android/build/libs/')   //javadoc and sources
+            from('../osmdroid-android/build/libs/')   //javadoc and sources {}
 
-            from('../OSMMapTilePackager/build/distributions/')
-            from('../OSMMapTilePackager/build/libs/')
+            from('../OSMMapTilePackager/build/distributions/'){}
+            from('../OSMMapTilePackager/build/libs/'){}
+
+            from('../osmdroid-server-jdk/build/distributions/'){}
+            from('../osmdroid-server-jdk/build/libs/'){}
 
             include('*.apk')
             include('*.aar')

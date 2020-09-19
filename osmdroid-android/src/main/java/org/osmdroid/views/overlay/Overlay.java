@@ -4,7 +4,11 @@ package org.osmdroid.views.overlay;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.osmdroid.api.IMapView;
+import org.osmdroid.util.BoundingBox;
+import org.osmdroid.util.TileSystem;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.Projection;
+import org.osmdroid.views.drawing.MapSnapshot;
 import org.osmdroid.views.util.constants.OverlayConstants;
 
 import android.content.Context;
@@ -49,6 +53,8 @@ public abstract class Overlay implements OverlayConstants {
 
 	private static final Rect mRect = new Rect();
 	private boolean mEnabled = true;
+	private final TileSystem tileSystem = MapView.getTileSystem(); // used only for the default bounding box
+	protected BoundingBox mBounds = new BoundingBox(tileSystem.getMaxLatitude(), tileSystem.getMaxLongitude(),tileSystem.getMinLatitude(),tileSystem.getMinLongitude());
 
 	// ===========================================================
 	// Constructors
@@ -65,6 +71,16 @@ public abstract class Overlay implements OverlayConstants {
 	// ===========================================================
 	// Getter & Setter
 	// ===========================================================
+
+	/**
+	 * Gets the bounds of the overlay, useful for skipping draw cycles on overlays
+	 * that are not in the current bounding box of the view
+	 * @since 6.0.0
+	 * @return
+	 */
+	public BoundingBox getBounds(){
+		return mBounds;
+	}
 
 	/**
 	 * Sets whether the Overlay is marked to be enabled. This setting does nothing by default, but
@@ -116,8 +132,21 @@ public abstract class Overlay implements OverlayConstants {
 	 * should check isEnabled() before calling draw(). By default, draws nothing.
 	 *
 	 * changed for 5.6 to be public see https://github.com/osmdroid/osmdroid/issues/466
+	 * If possible, use {@link #draw(Canvas, Projection)} instead (cf. {@link MapSnapshot}
 	 */
-	public abstract void draw(final Canvas c, final MapView osmv, final boolean shadow);
+	public void draw(final Canvas pCanvas, final MapView pMapView, final boolean pShadow) {
+		if (pShadow) {
+			return;
+		}
+		draw(pCanvas, pMapView.getProjection());
+	}
+
+	/**
+	 * @since 6.1.0
+	 */
+	public void draw(final Canvas pCanvas, final Projection pProjection) {
+		// display nothing by default
+	}
 
 	// ===========================================================
 	// Methods
@@ -267,6 +296,26 @@ public abstract class Overlay implements OverlayConstants {
 		drawable.draw(canvas);
 		drawable.setBounds(mRect);
 		canvas.restore();
+	}
+
+	/**
+	 * Triggered on application lifecycle changes, assuming the mapview is triggered appropriately
+	 * related issue https://github.com/osmdroid/osmdroid/issues/823
+	 * https://github.com/osmdroid/osmdroid/issues/806
+	 * @since 6.0.0
+	 */
+	public void onPause(){
+
+	}
+
+	/**
+	 * Triggered on application lifecycle changes, assuming the mapview is triggered appropriately
+	 * related issue https://github.com/osmdroid/osmdroid/issues/823
+	 * https://github.com/osmdroid/osmdroid/issues/806
+	 * @since 6.0.0
+	 */
+	public void onResume(){
+
 	}
 
 	// ===========================================================

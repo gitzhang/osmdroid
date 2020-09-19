@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import org.osmdroid.R;
 import org.osmdroid.events.MapListener;
@@ -12,8 +11,8 @@ import org.osmdroid.events.ScrollEvent;
 import org.osmdroid.events.ZoomEvent;
 import org.osmdroid.samplefragments.BaseSampleFragment;
 import org.osmdroid.tileprovider.tilesource.MapBoxTileSource;
-import org.osmdroid.tileprovider.tilesource.MapQuestTileSource;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 
 
@@ -35,8 +34,8 @@ public class SampleSplitScreen extends BaseSampleFragment implements MapListener
 
         View root = inflater.inflate(R.layout.map_splitscreen, container, false);
 
-        mMapView = (MapView) root.findViewById(R.id.mapview1);
-        mMapView2 = (MapView) root.findViewById(R.id.mapview2);
+        mMapView = root.findViewById(R.id.mapview1);
+        mMapView2 = root.findViewById(R.id.mapview2);
 
         return root;
     }
@@ -44,13 +43,16 @@ public class SampleSplitScreen extends BaseSampleFragment implements MapListener
     @Override
     protected void addOverlays() {
         mMapView.setTileSource(TileSourceFactory.MAPNIK);
+        mMapView.getController().setZoom(1);
+        mMapView.getController().setCenter(new GeoPoint(39.8282, 98.5795));
+        mMapView2.getController().setZoom(1);
+        mMapView2.getController().setCenter(new GeoPoint(39.8282, 98.5795));
         mMapView.setMapListener(this);
         //hey, check out the other constructors for mapbox, there's a few options to load up your
         //access token and tile set preferences
         mMapView2.setTileSource(new MapBoxTileSource(getContext()));
         mMapView2.setMapListener(this);
 
-        mMapView2.setBuiltInZoomControls(true);
         mMapView2.setMultiTouchControls(true);
         mMapView2.setTilesScaledToDpi(true);
     }

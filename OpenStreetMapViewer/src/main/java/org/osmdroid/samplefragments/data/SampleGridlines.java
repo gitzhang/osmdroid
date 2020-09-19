@@ -1,14 +1,8 @@
 package org.osmdroid.samplefragments.data;
 
-import android.util.Log;
-
 import org.osmdroid.samplefragments.BaseSampleFragment;
 import org.osmdroid.util.GeoPoint;
-import org.osmdroid.views.overlay.FolderOverlay;
-import org.osmdroid.events.MapListener;
-import org.osmdroid.events.ScrollEvent;
-import org.osmdroid.events.ZoomEvent;
-import org.osmdroid.views.overlay.gridlines.LatLonGridlineOverlay;
+import org.osmdroid.views.overlay.gridlines.LatLonGridlineOverlay2;
 
 /**
  * An example on how to use the lat/lon gridline overlay.
@@ -16,9 +10,8 @@ import org.osmdroid.views.overlay.gridlines.LatLonGridlineOverlay;
  * basically, listen for map motion/zoom events and remove the old overlay, then add the new one.
  * you can also override the color scheme and font sizes for the labels and lines
  */
-public class SampleGridlines extends BaseSampleFragment implements MapListener {
+public class SampleGridlines extends BaseSampleFragment  {
 
-    FolderOverlay activeLatLonGrid;
 
     @Override
     public String getSampleTitle() {
@@ -27,45 +20,16 @@ public class SampleGridlines extends BaseSampleFragment implements MapListener {
 
     @Override
     protected void addOverlays() {
+        super.addOverlays();
         mMapView.getController().setCenter(new GeoPoint(0d,0d));
         mMapView.getController().setZoom(5);
         mMapView.setTilesScaledToDpi(true);
-        mMapView.setMapListener(this);
+
         mMapView.getController().setZoom(3);
-        updateGridlines();
-    }
 
-    @Override
-    public boolean onScroll(ScrollEvent scrollEvent) {
-        updateGridlines();
-        return false;
-    }
+        LatLonGridlineOverlay2 grids = new LatLonGridlineOverlay2();
+        mMapView.getOverlayManager().add(grids);
 
-    @Override
-    public boolean onZoom(ZoomEvent zoomEvent) {
-        updateGridlines();
-        return false;
-    }
-
-    private void updateGridlines(){
-
-        if (mMapView==null)
-            return; //happens during unit tests with rapid recycling of the fragment
-        if (activeLatLonGrid != null) {
-            mMapView.getOverlayManager().remove(activeLatLonGrid);
-            activeLatLonGrid.onDetach(mMapView);
-        }
-        activeLatLonGrid = LatLonGridlineOverlay.getLatLonGrid(getActivity(), mMapView);
-        mMapView.getOverlays().add(activeLatLonGrid);
-
-    }
-
-    @Override
-    public void onDestroyView(){
-
-        activeLatLonGrid.onDetach(mMapView);
-        activeLatLonGrid=null;
-        super.onDestroyView();
     }
 
 }

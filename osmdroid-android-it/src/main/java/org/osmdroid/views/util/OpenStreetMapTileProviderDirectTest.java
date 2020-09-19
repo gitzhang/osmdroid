@@ -8,18 +8,17 @@
 package org.osmdroid.views.util;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 import org.osmdroid.config.Configuration;
-import org.osmdroid.tileprovider.MapTile;
 import org.osmdroid.tileprovider.MapTileProviderBasic;
 import org.osmdroid.tileprovider.MapTileRequestState;
 import org.osmdroid.tileprovider.modules.MapTileModuleProviderBase;
 import org.osmdroid.tileprovider.tilesource.BitmapTileSourceBase;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.MapTileIndex;
 
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
@@ -30,7 +29,6 @@ import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
-import android.os.Environment;
 import android.os.RemoteException;
 import android.test.AndroidTestCase;
 
@@ -42,7 +40,7 @@ import junit.framework.Assert;
  */
 public class OpenStreetMapTileProviderDirectTest extends AndroidTestCase {
 
-	MapTileProviderBasic mProvider;
+	private MapTileProviderBasic mProvider;
 
 	@Override
 	protected void setUp() throws Exception {
@@ -52,22 +50,27 @@ public class OpenStreetMapTileProviderDirectTest extends AndroidTestCase {
 		super.setUp();
 	}
 
+	@Override
+	protected void tearDown() throws Exception {
+		super.tearDown();
+		mProvider.detach();
+	}
+
 	public void test_getMapTile_not_found() {
-		final MapTile tile = new MapTile(2, 3, 4);
+		final long tile = MapTileIndex.getTileIndex(29, 0, 0);
 
 		final Drawable drawable = mProvider.getMapTile(tile);
 
 		assertNull("Expect tile to be null", drawable);
 	}
 
-	public void test_getMapTile_found() throws RemoteException, FileNotFoundException, BitmapTileSourceBase.LowMemoryException, java.io.IOException {
-		final MapTile tile = new MapTile(2, 3, 4);
+	public void test_getMapTile_found() throws RemoteException, BitmapTileSourceBase.LowMemoryException, java.io.IOException {
+		final long tile = MapTileIndex.getTileIndex(2, 3, 3);
 		if (Build.VERSION.SDK_INT >=23)
 			return;
 
-		//this can fail if storage permissions isn't available.
 		// create a bitmap, draw something on it, write it to a file and put it in the cache
-		String path = Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "osmdroid" + File.separator;
+		String path = getContext().getFilesDir().getAbsolutePath() + File.separator + "osmdroid" + File.separator;
 
 		File temp= new File(path);
 		if (!temp.exists())
@@ -77,7 +80,10 @@ public class OpenStreetMapTileProviderDirectTest extends AndroidTestCase {
 		File f = new File(path);
 		if (f.exists())
 			f.delete();
-		final Bitmap bitmap1 = Bitmap.createBitmap(60, 30, Config.ARGB_8888);
+		final Bitmap bitmap1 = Bitmap.createBitmap(
+				TileSourceFactory.MAPNIK.getTileSizePixels(),
+				TileSourceFactory.MAPNIK.getTileSizePixels(),
+				Config.ARGB_8888);
 		bitmap1.eraseColor(Color.YELLOW);
 		final Canvas canvas = new Canvas(bitmap1);
 
@@ -85,14 +91,14 @@ public class OpenStreetMapTileProviderDirectTest extends AndroidTestCase {
 		try {
 			f.createNewFile();
 			final FileOutputStream fos = new FileOutputStream(path);
-			bitmap1.compress(CompressFormat.JPEG, 100, fos);
+			bitmap1.compress(CompressFormat.PNG, 100, fos);
 			fos.close();
 		}catch (Exception ex){
 			ex.printStackTrace();
 			Assert.fail("unable to write temp tile " + ex);
 		}
 		final MapTileRequestState state = new MapTileRequestState(tile,
-				new MapTileModuleProviderBase[] {}, mProvider);
+				new ArrayList<MapTileModuleProviderBase>(), mProvider);
 		mProvider.mapTileRequestCompleted(state, TileSourceFactory.MAPNIK.getDrawable(path));
 
 		// do the test

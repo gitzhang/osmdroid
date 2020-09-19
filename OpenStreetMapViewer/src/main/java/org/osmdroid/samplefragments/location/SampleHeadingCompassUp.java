@@ -19,7 +19,6 @@ import android.widget.TextView;
 
 import org.osmdroid.R;
 import org.osmdroid.samplefragments.BaseSampleFragment;
-import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.compass.IOrientationConsumer;
 import org.osmdroid.views.overlay.compass.IOrientationProvider;
 import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
@@ -48,8 +47,8 @@ public class SampleHeadingCompassUp extends BaseSampleFragment implements Locati
 
         View root = inflater.inflate(R.layout.map_with_locationbox, container, false);
 
-        mMapView = (MapView) root.findViewById(R.id.mapview);
-        textViewCurrentLocation = (TextView) root.findViewById(R.id.textViewCurrentLocation);
+        mMapView = root.findViewById(R.id.mapview);
+        textViewCurrentLocation = root.findViewById(R.id.textViewCurrentLocation);
         return root;
     }
 
@@ -108,11 +107,15 @@ public class SampleHeadingCompassUp extends BaseSampleFragment implements Locati
         LocationManager lm = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
         try {
             //on API15 AVDs,network provider fails. no idea why
-            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, (LocationListener) this);
-            lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, (LocationListener) this);
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+            lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
         } catch (Exception ex) {
+            //usually permissions or
+            //java.lang.IllegalArgumentException: provider doesn't exist: network
+            ex.printStackTrace();
         }
-        compass = new InternalCompassOrientationProvider(getActivity());
+        if (compass==null)
+            compass = new InternalCompassOrientationProvider(getActivity());
         compass.startOrientationProvider(this);
         mMapView.getController().zoomTo(16);
 
@@ -245,19 +248,16 @@ public class SampleHeadingCompassUp extends BaseSampleFragment implements Locati
                     public void run() {
                         if (getActivity() != null && textViewCurrentLocation != null) {
                             textViewCurrentLocation.setText("GPS Speed: " + gpsspeed + "m/s  GPS Bearing: " + gpsbearing +
-                                "\nDevice Orientation: " + (int) deviceOrientation + "  Compass heading: " + (int) bearing + "\n" +
+                                "\nDevice Orientation: " + deviceOrientation + "  Compass heading: " + (int) bearing + "\n" +
                                 "True north: " + trueNorth.intValue() + " Map Orientation: " + (int) mMapView.getMapOrientation() + "\n" +
                                 screen_orientation);
                         }
                     }
                 });
         } catch (Exception ex) {
+            ex.printStackTrace();
         }
         Log.i(TAG,isGps + ","+gpsspeed + "," + gpsbearing + "," + deviceOrientation + "," + bearing + "," + trueNorth.intValue() + "," + mMapView.getMapOrientation() + "," + screen_orientation);
     }
 
-    private void updateMap() {
-
-
-    }
 }

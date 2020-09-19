@@ -5,9 +5,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import org.osmdroid.R;
 import org.osmdroid.api.IGeoPoint;
@@ -16,9 +14,7 @@ import org.osmdroid.events.MapListener;
 import org.osmdroid.events.ScrollEvent;
 import org.osmdroid.events.ZoomEvent;
 import org.osmdroid.samplefragments.BaseSampleFragment;
-import org.osmdroid.tileprovider.MapTile;
-import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase;
-import org.osmdroid.views.MapView;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 
 import java.text.DecimalFormat;
 
@@ -41,25 +37,18 @@ public class SampleMapEventListener extends BaseSampleFragment
 
         View root = inflater.inflate(R.layout.map_with_locationbox, container,false);
 
-        mMapView = (MapView) root.findViewById(R.id.mapview);
-        textViewCurrentLocation = (TextView) root.findViewById(R.id.textViewCurrentLocation);
+        mMapView = root.findViewById(R.id.mapview);
+        textViewCurrentLocation = root.findViewById(R.id.textViewCurrentLocation);
         return root;
     }
 
     @Override
     protected void addOverlays() {
         super.addOverlays();
+        updateInfo();
 
-        //FIXME, this tile source only goes to 15, set to 25 to test overflows for zoom > 20
-        mMapView.setTileSource(new OnlineTileSourceBase("USGS Topo", 0, 25, 256, "",
-                new String[] { "http://basemap.nationalmap.gov/ArcGIS/rest/services/USGSTopo/MapServer/tile/" }) {
-            @Override
-            public String getTileURLString(MapTile aTile) {
-                return getBaseUrl() + aTile.getZoomLevel() + "/" + aTile.getY() + "/" + aTile.getX()
-                        + mImageFilenameEnding;
-            }
-        });
-        mMapView.setMapListener(new MapListener() {
+        mMapView.setTileSource(TileSourceFactory.USGS_SAT);
+        mMapView.addMapListener(new MapListener() {
             @Override
             public boolean onScroll(ScrollEvent event) {
                 Log.i(IMapView.LOGTAG, System.currentTimeMillis() + " onScroll " + event.getX() + "," +event.getY() );
@@ -81,7 +70,7 @@ public class SampleMapEventListener extends BaseSampleFragment
         IGeoPoint mapCenter = mMapView.getMapCenter();
         textViewCurrentLocation.setText(df.format(mapCenter.getLatitude())+","+
                 df.format(mapCenter.getLongitude())
-                +","+mMapView.getZoomLevel());
+                +",zoom="+mMapView.getZoomLevelDouble() + "\nBounds: " + mMapView.getBoundingBox().toString());
 
     }
 }
